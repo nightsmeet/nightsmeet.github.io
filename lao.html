@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>中老互译小工具</title>
+<style>
+  :root{ --bg:#f6f4ef; --card:#ffffff; --ink:#1d2733; --sub:#6b7684; --accent:#b3541e; --accent2:#1e6f5c; --line:#e5e0d5; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+        font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+        padding:16px 14px 40px; }
+  .lao{ font-family:"Noto Sans Lao","Saysettha OT",-apple-system,sans-serif; }
+  header{ text-align:center; margin:6px 0 14px; }
+  header h1{ font-size:21px; margin:0 0 4px; letter-spacing:.5px; }
+  header p{ margin:0; color:var(--sub); font-size:12.5px; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:14px;
+         box-shadow:0 1px 3px rgba(30,30,30,.05); }
+  .dir{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .dir .lang{ flex:1; text-align:center; font-weight:600; font-size:15px; padding:9px 0; background:#f1ede3; border-radius:10px; }
+  .swap{ width:42px; height:42px; border-radius:50%; border:1px solid var(--line); background:#fff; font-size:18px; cursor:pointer; }
+  textarea{ width:100%; min-height:92px; border:1px solid var(--line); border-radius:10px; padding:10px; font-size:16px; resize:vertical; }
+  textarea:focus{ outline:2px solid #e8c9a8; border-color:#e8c9a8; }
+  .row{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  button.act{ flex:1; min-width:96px; padding:12px 0; border:none; border-radius:10px; font-size:15px; font-weight:600; cursor:pointer; }
+  .go{ background:var(--accent); color:#fff; }
+  .ghost{ background:#f1ede3; color:var(--ink); font-weight:500; }
+  .result{ margin-top:12px; background:#fbf9f4; border:1px dashed var(--line); border-radius:10px; padding:12px; min-height:56px;
+           font-size:18px; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
+  .result.empty{ color:var(--sub); font-size:14px; }
+  .note{ color:var(--sub); font-size:12px; line-height:1.6; margin-top:10px; }
+  h2{ font-size:15px; margin:2px 0 8px; color:var(--accent2); }
+  .phrase{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 2px; border-bottom:1px solid #f0ead9; cursor:pointer; }
+  .phrase:last-child{ border-bottom:none; }
+  .phrase .zh{ font-size:14.5px; }
+  .phrase .lo{ font-size:15.5px; color:#33475b; text-align:right; }
+  .phrase:active{ background:#faf6ec; }
+  .hint{ font-size:11.5px; color:var(--sub); margin:0 0 4px; }
+  #toast{ position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px); background:#1d2733; color:#fff;
+          padding:9px 18px; border-radius:20px; font-size:13.5px; opacity:0; pointer-events:none; transition:.25s; }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>中文 ⇄ 老挝语</h1>
+  <p>中老互译小工具 · 在线翻译 + 离线常用句</p>
+</header>
+
+<div class="card">
+  <div class="dir">
+    <div class="lang" id="fromLabel">中文</div>
+    <button class="swap" id="swapBtn" title="交换方向">⇄</button>
+    <div class="lang" id="toLabel">老挝语</div>
+  </div>
+  <textarea id="input" placeholder="输入要翻译的文字（单次最多 500 字）" maxlength="500"></textarea>
+  <div class="row">
+    <button class="act go" id="goBtn">翻译</button>
+    <button class="act ghost" id="clearBtn">清空</button>
+  </div>
+  <div class="result empty lao" id="result">译文会显示在这里</div>
+  <div class="row">
+    <button class="act ghost" id="copyBtn">复制译文</button>
+    <button class="act ghost" id="speakBtn">听发音（去云岭翻译）</button>
+  </div>
+  <p class="note">在线翻译走 MyMemory 免费接口，需要联网；日常沟通够用，正式文件请以云岭翻译或人工译校为准。注意：Google 翻译没有老挝语发音（只有文字翻译），iPhone 自带也没有——听发音请用云岭翻译 App（支持老挝语语音播报）：点“听发音”会复制译文，粘贴到云岭翻译里就能听播报。</p>
+</div>
+
+<div class="card">
+  <h2>常用句（不用联网，点一下复制老挝语）</h2>
+  <p class="hint">打招呼 · 礼貌</p>
+  <div id="phrases1"></div>
+  <p class="hint" style="margin-top:10px;">吃饭 · 咖啡店</p>
+  <div id="phrases2"></div>
+  <p class="hint" style="margin-top:10px;">买东西 · 问价</p>
+  <div id="phrases3"></div>
+</div>
+
+<div id="toast">已复制</div>
+
+<script>
+  var dir = 'zh2lo'; // or 'lo2zh'
+  var lastResult = '';
+  var input = document.getElementById('input');
+  var result = document.getElementById('result');
+  var fromLabel = document.getElementById('fromLabel');
+  var toLabel = document.getElementById('toLabel');
+
+  document.getElementById('swapBtn').onclick = function(){
+    dir = (dir === 'zh2lo') ? 'lo2zh' : 'zh2lo';
+    fromLabel.textContent = (dir === 'zh2lo') ? '中文' : '老挝语';
+    toLabel.textContent   = (dir === 'zh2lo') ? '老挝语' : '中文';
+    input.placeholder = (dir === 'zh2lo') ? '输入要翻译的文字（单次最多 500 字）' : 'ພິມພາສາລາວທີ່ຕ້ອງການແປ';
+    if (lastResult){ input.value = lastResult; setResult('', true); }
+  };
+
+  function setResult(text, empty){
+    lastResult = text || '';
+    result.textContent = empty ? '译文会显示在这里' : text;
+    result.classList.toggle('empty', !!empty);
+  }
+
+  document.getElementById('goBtn').onclick = function(){
+    var q = input.value.trim();
+    if (!q){ setResult('', true); return; }
+    result.textContent = '翻译中…'; result.classList.remove('empty');
+    var pair = (dir === 'zh2lo') ? 'zh-CN|lo' : 'lo|zh-CN';
+    var url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(q) + '&langpair=' + encodeURIComponent(pair);
+    fetch(url).then(function(r){ return r.json(); }).then(function(d){
+      var t = d && d.responseData && d.responseData.translatedText;
+      if (t){ setResult(t, false); }
+      else { result.textContent = '没翻出来，检查一下网络再试'; }
+    }).catch(function(){
+      result.textContent = '网络不通或接口忙，稍后再试。常用句在下面，不用联网也能用。';
+    });
+  };
+
+  document.getElementById('clearBtn').onclick = function(){
+    input.value = ''; setResult('', true); input.focus();
+  };
+
+  function toast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 1400);
+  }
+  function copyText(text){
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ toast('已复制'); }, function(){ fallbackCopy(text); });
+    } else { fallbackCopy(text); }
+  }
+  function fallbackCopy(text){
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast('已复制'); } catch(e){ toast('复制失败，长按选择文字'); }
+    document.body.removeChild(ta);
+  }
+
+  document.getElementById('copyBtn').onclick = function(){
+    if (lastResult){ copyText(lastResult); } else { toast('先翻译，再复制'); }
+  };
+
+  document.getElementById('speakBtn').onclick = function(){
+    var laoText = (dir === 'zh2lo') ? lastResult : input.value.trim();
+    if (!laoText){ toast('先翻译出老挝语，再听发音'); return; }
+    copyText(laoText);
+    setTimeout(function(){ toast('已复制，去云岭翻译粘贴听播报'); }, 300);
+  };
+
+  var groups = {
+    phrases1: [
+      ['你好','ສະບາຍດີ'], ['谢谢','ຂອບໃຈ'], ['非常谢谢','ຂອບໃຈຫຼາຍໆ'],
+      ['没关系 / 不客气','ບໍ່ເປັນຫຍັງ'], ['再见','ລາກ່ອນ'], ['对不起 / 借过','ຂໍໂທດ'],
+      ['我听不懂','ຂ້ອຍບໍ່ເຂົ້າໃຈ']
+    ],
+    phrases2: [
+      ['好吃','ແຊບ'], ['不辣','ບໍ່ເຜັດ'], ['一点点辣','ເຜັດໜ້ອຍໜຶ່ງ'],
+      ['水','ນ້ຳ'], ['老挝啤酒','ເບຍລາວ'], ['买单','ໄລ່ເງິນແດ່'], ['洗手间在哪？','ຫ້ອງນ້ຳຢູ່ໃສ']
+    ],
+    phrases3: [
+      ['这个多少钱？','ນີ້ລາຄາເທົ່າໃດ'], ['太贵了','ແພງຫຼາຍ'], ['能便宜点吗？','ລົດໄດ້ບໍ']
+    ]
+  };
+  Object.keys(groups).forEach(function(id){
+    var box = document.getElementById(id);
+    groups[id].forEach(function(p){
+      var div = document.createElement('div');
+      div.className = 'phrase';
+      div.innerHTML = '<span class="zh"></span><span class="lo lao"></span>';
+      div.querySelector('.zh').textContent = p[0];
+      div.querySelector('.lo').textContent = p[1];
+      div.onclick = function(){ copyText(p[1]); };
+      box.appendChild(div);
+    });
+  });
+</script>
+</body>
+</html>
