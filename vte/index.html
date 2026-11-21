@@ -107,6 +107,11 @@ main.wrap { padding-block: 12px 110px; }
 .phead h2 { margin: 0; font-size: 19px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .phead h2 small { display: block; font-size: 13px; color: var(--muted); font-weight: 400; margin-top: 2px; }
 .pbody { overflow-y: auto; padding: 12px 16px calc(24px + env(safe-area-inset-bottom, 0px)); }
+.thumb.noimg { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 11.5px; line-height: 1.35; color: var(--muted); }
+.nophoto { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 18px 14px; margin-bottom: 12px; border: 1px dashed var(--line); border-radius: 12px; background: var(--bg); }
+.nophoto p { margin: 0; color: var(--muted); font-size: 13px; }
+.nophoto a { display: inline-block; padding: 9px 16px; border-radius: 10px; background: var(--accent); color: var(--accent-fg); font-weight: 600; text-decoration: none; }
+.morephoto { display: block; margin: -4px 0 12px; font-size: 13px; font-weight: 600; text-decoration: none; }
 .gallery { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px 12px; padding: 0 16px; }
 .gallery img { flex: none; width: min(86%, 520px); aspect-ratio: 3 / 2; object-fit: cover; border-radius: 12px; background: var(--sunken); scroll-snap-align: start; }
 .maprow { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 4px 0 6px; }
@@ -390,7 +395,7 @@ function render() {
     const sub = x.kind.includes("酒店") && x.price ? `<div class="price1">${esc(firstLine(x.price))}${x.price.split("\n").length > 1 ? " 等" : ""}</div>` : "";
     return `<article class="card">
       <button class="main" type="button" data-open="${x.id}">
-        ${x.imgs && x.imgs.length ? `<img class="thumb" alt="" data-img="${esc(x.imgs[0])}" data-thumb="1">` : `<div class="thumb"></div>`}
+        ${x.imgs && x.imgs.length ? `<img class="thumb" alt="" data-img="${esc(x.imgs[0])}" data-thumb="1">` : `<div class="thumb noimg">暂无<br>照片</div>`}
         <div><h3>${esc(x.name)}${x.nameNote ? `<small>${esc(x.nameNote)}</small>` : ""}</h3>
           <div class="tags">${tagHTML(x)}</div>${sub}
           <div class="desc">${esc(x.food || x.facility || x.note || "")}</div></div>
@@ -419,7 +424,12 @@ function showDetail(id) {
   const phones = (x.phones || []).map(p => `<div class="phone"><a href="${telHref(p.num)}">${esc(p.num)}</a>${both && p.src ? `<small>${esc(p.src === "酒店" ? "酒店协议表" : p.src === "餐厅" ? "餐厅表" : p.src)}</small>` : ""}<button class="mini" type="button" data-copy="${esc(p.num)}">复制</button></div>`).join("");
   const links = (x.maps || []).map(m => safeUrl(m.url)).filter(Boolean);
   const html = `
-    ${x.imgs && x.imgs.length ? `<div class="gallery">${x.imgs.map(i => `<img alt="" data-img="${esc(i)}">`).join("")}</div>` : ""}
+    ${x.imgs && x.imgs.length
+      ? `<div class="gallery">${x.imgs.map(i => `<img alt="" data-img="${esc(i)}">`).join("")}</div>
+         <a class="morephoto" href="${esc(googleHref(x))}" target="_blank" rel="noopener">在 Google 地图看更多照片和评价 ›</a>`
+      : `<div class="nophoto"><p>还没有照片</p>
+           <a href="${esc(googleHref(x))}" target="_blank" rel="noopener">在 Google 地图看照片和评价</a>
+           <p>到店拍了照片，可点下方“编辑”上传。</p></div>`}
     <div class="tags">${tagHTML(x)}</div>
     <div class="sec"><h4>导航</h4><div class="maprow">
       <a class="main" href="${esc(googleHref(x))}" target="_blank" rel="noopener">Google 地图</a>
