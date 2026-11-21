@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="万象推荐">
+<meta name="theme-color" content="#26335c">
+<title>万象酒店餐厅推荐表</title>
+<style>
+/* 布局：顶部固定的搜索与分类条；下面是卡片列表；点卡片从底部升起详情；右下角“新增”按钮 */
+:root {
+  --bg: #f4f5f8;
+  --surface: #ffffff;
+  --sunken: #eceef4;
+  --line: #d9dce6;
+  --fg: #1a1f2e;
+  --muted: #5f6678;
+  --accent: #26335c;        /* 靛蓝：老挝织锦的底色 */
+  --accent-fg: #ffffff;
+  --accent-soft: #e3e7f3;
+  --gold: #b7791f;          /* 金线：用于价格与强调 */
+  --gold-soft: #f6ecd9;
+  --danger: #b3261e;
+  --ok: #1e7a46;
+  --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Segoe UI", sans-serif;
+  --num: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11141c; --surface: #1a1e29; --sunken: #232836; --line: #303648; --fg: #e8eaf1; --muted: #9aa1b4;
+    --accent: #9fb0e6; --accent-fg: #10162b; --accent-soft: #252d48; --gold: #e3b260; --gold-soft: #3a2f1c;
+    --danger: #f08a82; --ok: #6fd39b; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.55 var(--font); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.wrap { max-width: 880px; margin-inline: auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* 密码页 */
+#lock { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+#lock form { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 26px 22px; width: min(360px, 100%); }
+#lock h1 { margin: 0 0 4px; font-size: 20px; }
+#lock p { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
+.field { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); font-size: 16px; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 14px; font-weight: 600; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.btn.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.block { width: 100%; padding: 12px; margin-top: 12px; font-size: 16px; }
+.check { display: flex; gap: 8px; align-items: center; margin-top: 12px; color: var(--muted); font-size: 13px; }
+.err { color: var(--danger); font-size: 13px; min-height: 20px; margin-top: 8px; }
+
+/* 顶栏 */
+header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+header .wrap { padding-block: 10px; display: flex; flex-direction: column; gap: 9px; }
+.top { display: flex; align-items: center; gap: 10px; }
+.top h1 { margin: 0; font-size: 18px; flex: 1; min-width: 0; }
+.top h1 small { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
+.icon-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 6px 10px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.search { display: flex; gap: 8px; }
+.search input { flex: 1; min-width: 0; }
+.seg { display: flex; gap: 4px; background: var(--sunken); padding: 3px; border-radius: 10px; }
+.seg button { flex: 1; border: 0; background: transparent; padding: 6px 0; border-radius: 8px; font-weight: 600; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / .14); }
+.chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 4px 12px; font-size: 13px; color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+
+/* 列表 */
+main.wrap { padding-block: 12px 110px; }
+.tally { color: var(--muted); font-size: 13px; margin-bottom: 10px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.tally b { color: var(--fg); font-family: var(--num); }
+.list { display: grid; gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.card .main { width: 100%; border: 0; background: transparent; text-align: left; padding: 12px; display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 12px; align-items: start; }
+.thumb { width: 76px; height: 76px; border-radius: 10px; background: var(--sunken); object-fit: cover; display: block; }
+.card h3 { margin: 0; font-size: 16px; line-height: 1.3; overflow-wrap: anywhere; }
+.card h3 small { font-weight: 400; color: var(--muted); font-size: 12.5px; margin-left: 6px; }
+.tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+.tag { font-size: 11.5px; padding: 0 7px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); line-height: 1.7; }
+.tag.hotel { background: var(--gold-soft); color: var(--gold); font-weight: 600; }
+.desc { margin-top: 5px; color: var(--muted); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.price1 { margin-top: 4px; font-size: 13px; color: var(--gold); font-weight: 600; }
+.acts { display: flex; border-top: 1px solid var(--line); }
+.acts a, .acts button { flex: 1; text-align: center; padding: 9px 4px; font-size: 13.5px; font-weight: 600; text-decoration: none; color: var(--accent); background: transparent; border: 0; }
+.acts > * + * { border-left: 1px solid var(--line); }
+.acts .off { color: var(--muted); font-weight: 400; pointer-events: none; }
+.empty { text-align: center; color: var(--muted); padding: 40px 10px; }
+.fab { position: fixed; right: max(18px, env(safe-area-inset-right, 0px)); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 6; border: 0; border-radius: 99px; padding: 13px 20px; background: var(--accent); color: var(--accent-fg); font-weight: 700; font-size: 15px; box-shadow: 0 6px 18px rgb(0 0 0 / .25); }
+
+/* 底部面板 */
+.sheet { position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / .45); display: flex; align-items: flex-end; justify-content: center; }
+.panel { background: var(--surface); width: 100%; max-width: 720px; max-height: 94%; border-radius: 18px 18px 0 0; display: flex; flex-direction: column; overflow: hidden; }
+@media (min-width: 760px) { .sheet { align-items: center; } .panel { border-radius: 18px; max-height: 88%; } }
+.phead { padding: 14px 16px 12px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: flex-start; }
+.phead h2 { margin: 0; font-size: 19px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.phead h2 small { display: block; font-size: 13px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+.pbody { overflow-y: auto; padding: 12px 16px calc(24px + env(safe-area-inset-bottom, 0px)); }
+.gallery { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px 12px; padding: 0 16px; }
+.gallery img { flex: none; width: min(86%, 520px); aspect-ratio: 3 / 2; object-fit: cover; border-radius: 12px; background: var(--sunken); scroll-snap-align: start; }
+.maprow { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 4px 0 6px; }
+.maprow a, .maprow button { display: block; text-align: center; padding: 10px; border-radius: 10px; font-weight: 600; text-decoration: none; border: 1px solid var(--accent); color: var(--accent); background: transparent; }
+.maprow a.main { background: var(--accent); color: var(--accent-fg); }
+.hint { color: var(--muted); font-size: 12.5px; }
+.sec { margin-top: 14px; }
+.sec h4 { margin: 0 0 4px; font-size: 12px; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.sec .txt { white-space: pre-line; overflow-wrap: anywhere; }
+.sec .txt.price { color: var(--gold); font-weight: 600; }
+.phone { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.phone:first-of-type { border-top: 0; }
+.phone a { font-family: var(--num); font-size: 15.5px; text-decoration: none; font-weight: 600; }
+.phone small { color: var(--muted); font-size: 12px; }
+.phone button { margin-left: auto; }
+.mini { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 3px 9px; font-size: 12.5px; color: var(--muted); }
+.links a { display: block; overflow-wrap: anywhere; font-size: 13px; }
+.foot { display: flex; gap: 8px; margin-top: 20px; }
+.foot .btn { flex: 1; }
+.src { margin-top: 14px; color: var(--muted); font-size: 12px; }
+
+/* 表单 */
+.form { display: grid; gap: 12px; }
+.form label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.form textarea { min-height: 76px; resize: vertical; }
+.form .row2 { display: flex; gap: 8px; flex-wrap: wrap; }
+.form .row2 > * { flex: 1 1 140px; }
+.kinds { display: flex; gap: 8px; }
+.kinds label { display: flex; align-items: center; gap: 6px; font-weight: 400; color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+.tagpick { display: flex; gap: 6px; flex-wrap: wrap; }
+.photos { display: flex; gap: 8px; flex-wrap: wrap; }
+.photos .ph { position: relative; }
+.photos img { width: 84px; height: 84px; object-fit: cover; border-radius: 10px; display: block; background: var(--sunken); }
+.photos .ph button { position: absolute; top: 3px; right: 3px; border: 0; border-radius: 99px; width: 24px; height: 24px; background: rgb(0 0 0 / .6); color: #fff; font-size: 14px; line-height: 1; padding: 0; }
+.addph { width: 84px; height: 84px; border: 1px dashed var(--line); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; text-align: center; background: var(--bg); }
+.req { color: var(--danger); }
+.confirm { border: 1px solid var(--danger); border-radius: 12px; padding: 12px; margin-top: 14px; }
+.confirm p { margin: 0 0 10px; }
+
+.toast { position: fixed; left: 50%; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 40; background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; max-width: min(92vw, 520px); box-shadow: 0 6px 20px rgb(0 0 0 / .25); }
+.busy { position: fixed; inset: 0; z-index: 50; background: rgb(0 0 0 / .35); display: flex; align-items: center; justify-content: center; }
+.busy div { background: var(--surface); padding: 16px 20px; border-radius: 12px; font-weight: 600; }
+.steps { margin: 6px 0 0; padding-left: 20px; font-size: 13.5px; }
+.steps li { margin: 3px 0; }
+code { font-family: var(--num); font-size: 12.5px; background: var(--sunken); padding: 1px 5px; border-radius: 5px; }
+@media (prefers-reduced-motion: no-preference) { .panel { animation: up .18s ease-out; } @keyframes up { from { transform: translateY(24px); opacity: .6; } } }
+</style>
+</head>
+<body>
+
+<div id="lock">
+  <form id="lockForm">
+    <h1>万象酒店餐厅推荐表</h1>
+    <p>内容已加密，请输入密码。</p>
+    <input id="pw" class="field" type="password" autocomplete="current-password" placeholder="密码" autofocus>
+    <label class="check"><input id="remember" type="checkbox">在本设备记住密码</label>
+    <button id="unlockBtn" class="btn primary block" type="submit">打开</button>
+    <div id="lockErr" class="err" role="alert"></div>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <div class="wrap">
+      <div class="top">
+        <h1>万象酒店餐厅推荐表<small id="sub"></small></h1>
+        <button class="icon-btn" id="moreBtn" type="button">设置</button>
+      </div>
+      <div class="search">
+        <input id="q" class="field" type="search" placeholder="搜名称、菜系、电话、介绍…" autocomplete="off" enterkeyhint="search">
+      </div>
+      <div class="seg" role="group" aria-label="类型">
+        <button type="button" data-kind="" aria-pressed="true">全部</button>
+        <button type="button" data-kind="餐厅" aria-pressed="false">餐厅</button>
+        <button type="button" data-kind="酒店" aria-pressed="false">酒店</button>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+  </header>
+  <main class="wrap">
+    <div class="tally" id="tally"></div>
+    <div class="list" id="list"></div>
+  </main>
+  <button class="fab" id="addBtn" type="button">＋ 新增</button>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="phead"><h2 id="sheetTitle"></h2><button class="icon-btn" id="closeBtn" type="button">关闭</button></div>
+    <div class="pbody" id="sheetBody"></div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<div class="busy" id="busy" hidden><div id="busyText">保存中…</div></div>
+
+<script>
+"use strict";
+/* ---------- 配置 ---------- */
+const GH = { owner: "nightsmeet", repo: "nightsmeet.github.io", branch: "main", dir: "vte" };
+const CENTER = "17.9667,102.6000";               // 万象市中心，用于名称搜索的范围
+const BASE_TAGS = ["老挝菜", "泰国菜", "越南菜", "中餐", "日料", "西餐", "烧烤火锅", "自助餐", "有包间", "湄公河景", "歌舞表演", "适合打卡"];
+const LS = { pw: "vte-pw", token: "vte-gh-token" };
+
+/* ---------- 小工具 ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const safeUrl = u => /^https?:\/\//i.test(String(u || "").trim()) ? String(u).trim() : null;
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} },
+};
+const b64dec = s => Uint8Array.from(atob(s.replace(/\s/g, "")), c => c.charCodeAt(0));
+function b64enc(bytes) {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+function toast(msg, ms = 3200) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), ms);
+}
+function busy(on, text) { $("busy").hidden = !on; if (text) $("busyText").textContent = text; }
+const rid = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), b => b.toString(16).padStart(2, "0")).join("");
+
+/* ---------- 加密 ---------- */
+let KEY = null, META = null;   // META: {s, n} 盐与迭代次数
+async function deriveKey(pw, salt, n) {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: n, hash: "SHA-256" }, k, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+async function decryptJSON(file) {
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64dec(file.i) }, KEY, b64dec(file.c));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function encryptJSON(obj) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, KEY, new TextEncoder().encode(JSON.stringify(obj))));
+  return { v: 1, s: META.s, n: META.n, i: b64enc(iv), c: b64enc(ct) };
+}
+async function encryptBytes(bytes) {           // 图片：前 12 字节为 IV
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, KEY, bytes));
+  const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12); return out;
+}
+async function decryptBytes(buf) {
+  const u = new Uint8Array(buf);
+  return crypto.subtle.decrypt({ name: "AES-GCM", iv: u.subarray(0, 12) }, KEY, u.subarray(12));
+}
+
+/* ---------- GitHub ---------- */
+const token = () => store.get(LS.token);
+async function gh(path, opts = {}) {
+  const r = await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.dir}/${path}` + (opts.method ? "" : `?ref=${GH.branch}`), {
+    ...opts,
+    headers: { "Accept": opts.raw ? "application/vnd.github.raw" : "application/vnd.github+json", "Authorization": "Bearer " + token(), "X-GitHub-Api-Version": "2022-11-28", ...(opts.body ? { "Content-Type": "application/json" } : {}) },
+    cache: "no-store",
+  });
+  if (!r.ok) { const e = new Error("GitHub " + r.status); e.status = r.status; try { e.detail = (await r.json()).message; } catch (_) {} throw e; }
+  return opts.raw ? r.arrayBuffer() : r.json();
+}
+async function ghPut(path, b64, message, sha) {
+  return gh(path, { method: "PUT", body: JSON.stringify({ message, content: b64, branch: GH.branch, ...(sha ? { sha } : {}) }) });
+}
+function ghError(e) {
+  if (e.status === 401) return "GitHub 令牌无效或已过期，请在“设置”里重新填写。";
+  if (e.status === 403 || e.status === 404) return "令牌没有写入权限。请确认令牌包含 nightsmeet.github.io 仓库的 Contents 读写权限。";
+  if (e.status === 409 || e.status === 422) return "保存时数据刚被别人改过，请再点一次保存。";
+  return "保存失败：" + (e.detail || e.message) + "。请检查网络后重试。";
+}
+
+/* ---------- 数据 ---------- */
+let DB = { records: [] }, FILE_SHA = null;
+async function loadFile() {
+  if (token()) {
+    try { const j = await gh("data.json"); FILE_SHA = j.sha; return JSON.parse(new TextDecoder().decode(b64dec(j.content))); }
+    catch (e) { /* 令牌不可用时退回网页文件 */ }
+  }
+  const r = await fetch("data.json?t=" + Date.now(), { cache: "no-store" });
+  if (!r.ok) throw new Error("data " + r.status);
+  return r.json();
+}
+async function unlock(pw, quiet) {
+  const btn = $("unlockBtn"); btn.disabled = true; btn.textContent = "解密中…";
+  try {
+    const file = await loadFile();
+    META = { s: file.s, n: file.n };
+    KEY = await deriveKey(pw, b64dec(file.s), file.n);
+    DB = await decryptJSON(file);
+    if ($("remember").checked || quiet) store.set(LS.pw, pw);
+    $("lock").hidden = true; $("app").hidden = false;
+    buildChips(); render();
+  } catch (e) {
+    KEY = null; store.set(LS.pw, null);
+    btn.disabled = false; btn.textContent = "打开";
+    if (!quiet) $("lockErr").textContent = !(window.crypto && crypto.subtle) ? "浏览器不支持解密，请用 https 地址打开。"
+      : e instanceof DOMException || e.name === "OperationError" ? "密码不对，请重试。" : "数据读取失败，请检查网络后重试。";
+  }
+}
+
+/* ---------- 图片 ---------- */
+const imgCache = new Map();
+async function imgURL(id, thumb) {
+  const k = id + (thumb ? ".t" : "");
+  if (imgCache.has(k)) return imgCache.get(k);
+  const p = (async () => {
+    let buf;
+    const r = await fetch(`img/${k}.bin`);
+    if (r.ok) buf = await r.arrayBuffer();
+    else if (token()) buf = await gh(`img/${k}.bin`, { raw: true });   // 刚上传、网站还没更新时
+    else throw new Error("img");
+    return URL.createObjectURL(new Blob([await decryptBytes(buf)], { type: "image/jpeg" }));
+  })();
+  imgCache.set(k, p);
+  p.catch(() => imgCache.delete(k));
+  return p;
+}
+const io = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return; io.unobserve(e.target); fillImg(e.target);
+}), { rootMargin: "300px" }) : null;
+function fillImg(el) { imgURL(el.dataset.img, el.dataset.thumb === "1").then(u => (el.src = u)).catch(() => {}); }
+function watchImgs(root) { root.querySelectorAll("img[data-img]").forEach(el => io ? io.observe(el) : fillImg(el)); }
+
+/* ---------- 地图与电话 ---------- */
+function telHref(num) {
+  let d = String(num).replace(/[^\d+]/g, "");
+  if (d.startsWith("+")) return "tel:" + d;
+  if (d.startsWith("00")) return "tel:+" + d.slice(2);
+  if (d.startsWith("0")) return "tel:+856" + d.slice(1);
+  return "tel:" + d;
+}
+function hasLL(x) { return typeof x.lat === "number" && typeof x.lng === "number"; }
+function searchName(x) { return x.name.trim() + " Vientiane"; }
+function googleHref(x) {
+  const u = safeUrl(x.maps && x.maps[0] && x.maps[0].url);
+  if (u) return u;
+  const q = hasLL(x) ? `${x.lat},${x.lng}` : searchName(x);
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+}
+function appleHref(x) {
+  if (hasLL(x)) return `https://maps.apple.com/?ll=${x.lat},${x.lng}&q=${encodeURIComponent(x.name)}`;
+  return `https://maps.apple.com/?q=${encodeURIComponent(searchName(x))}&sll=${CENTER}&z=14`;
+}
+function parseLL(text) {
+  const s = String(text || "");
+  const pats = [/@(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/, /!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/, /[?&](?:q|ll|query|daddr)=(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/, /(-?\d{1,2}\.\d{3,})\s*[,，]\s*(-?\d{1,3}\.\d{3,})/];
+  for (const p of pats) { const m = s.match(p); if (m) { const a = +m[1], b = +m[2]; if (Math.abs(a) <= 90 && Math.abs(b) <= 180) return [a, b]; } }
+  return null;
+}
+
+/* ---------- 列表 ---------- */
+let kind = "", picked = new Set();
+function allTags() {
+  const seen = new Set(BASE_TAGS);
+  DB.records.forEach(x => (x.tags || []).forEach(t => t !== "酒店" && seen.add(t)));
+  return [...seen].filter(t => DB.records.some(x => (x.tags || []).includes(t)));
+}
+function buildChips() {
+  $("chips").innerHTML = allTags().map(t => `<button type="button" class="chip" data-tag="${esc(t)}" aria-pressed="${picked.has(t)}">${esc(t)}</button>`).join("");
+}
+function textOf(x) {
+  return [x.name, x.nameNote, (x.tags || []).join(" "), x.food, x.facility, x.price, x.addr, x.note, (x.phones || []).map(p => p.num + " " + p.num.replace(/\D/g, "")).join(" ")].join("\n").toLowerCase();
+}
+function filtered() {
+  const words = $("q").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return DB.records.filter(x => (!kind || (x.kind || []).includes(kind)) &&
+    [...picked].every(t => (x.tags || []).includes(t)) &&
+    words.every(w => textOf(x).includes(w)));
+}
+function firstLine(s) { return (String(s || "").split("\n").find(l => l.trim()) || "").replace(/[，,。;；、\s]+$/, ""); }
+function tagHTML(x) {
+  return (x.tags || []).map(t => `<span class="tag${t === "酒店" ? " hotel" : ""}">${esc(t)}</span>`).join("");
+}
+function render() {
+  const rs = filtered();
+  const nR = DB.records.filter(x => x.kind.includes("餐厅")).length, nH = DB.records.filter(x => x.kind.includes("酒店")).length;
+  $("sub").textContent = `餐厅 ${nR} · 酒店 ${nH}` + (DB.updated ? ` · 更新于 ${DB.updated.slice(0, 10)}` : "");
+  $("tally").innerHTML = `<span>找到 <b>${rs.length}</b> 家</span>` + (picked.size || kind || $("q").value ? `<button class="mini" id="clearBtn" type="button">清除条件</button>` : "");
+  if (!rs.length) { $("list").innerHTML = `<div class="empty">没有符合条件的酒店或餐厅。<br>试试换个关键词，或点“清除条件”。</div>`; return; }
+  $("list").innerHTML = rs.map(x => {
+    const ph = (x.phones || [])[0];
+    const sub = x.kind.includes("酒店") && x.price ? `<div class="price1">${esc(firstLine(x.price))}${x.price.split("\n").length > 1 ? " 等" : ""}</div>` : "";
+    return `<article class="card">
+      <button class="main" type="button" data-open="${x.id}">
+        ${x.imgs && x.imgs.length ? `<img class="thumb" alt="" data-img="${esc(x.imgs[0])}" data-thumb="1">` : `<div class="thumb"></div>`}
+        <div><h3>${esc(x.name)}${x.nameNote ? `<small>${esc(x.nameNote)}</small>` : ""}</h3>
+          <div class="tags">${tagHTML(x)}</div>${sub}
+          <div class="desc">${esc(x.food || x.facility || x.note || "")}</div></div>
+      </button>
+      <div class="acts">
+        ${ph ? `<a href="${telHref(ph.num)}">电话</a>` : `<span class="off">无电话</span>`}
+        <a href="${esc(googleHref(x))}" target="_blank" rel="noopener">Google 地图</a>
+        <a href="${esc(appleHref(x))}" target="_blank" rel="noopener">苹果地图</a>
+      </div></article>`;
+  }).join("");
+  watchImgs($("list"));
+}
+
+/* ---------- 详情 ---------- */
+let openId = null;
+function openSheet(title, html) {
+  $("sheetTitle").innerHTML = title; $("sheetBody").innerHTML = html; $("sheetBody").scrollTop = 0;
+  $("sheet").hidden = false; document.body.style.overflow = "hidden";
+}
+function closeSheet() { $("sheet").hidden = true; document.body.style.overflow = ""; openId = null; }
+function sec(title, body, cls = "") { return body ? `<div class="sec"><h4>${title}</h4><div class="txt ${cls}">${body}</div></div>` : ""; }
+function showDetail(id) {
+  const x = DB.records.find(r => r.id === id); if (!x) return;
+  openId = id;
+  const both = x.kind.length > 1;
+  const phones = (x.phones || []).map(p => `<div class="phone"><a href="${telHref(p.num)}">${esc(p.num)}</a>${both && p.src ? `<small>${esc(p.src === "酒店" ? "酒店协议表" : p.src === "餐厅" ? "餐厅表" : p.src)}</small>` : ""}<button class="mini" type="button" data-copy="${esc(p.num)}">复制</button></div>`).join("");
+  const links = (x.maps || []).map(m => safeUrl(m.url)).filter(Boolean);
+  const html = `
+    ${x.imgs && x.imgs.length ? `<div class="gallery">${x.imgs.map(i => `<img alt="" data-img="${esc(i)}">`).join("")}</div>` : ""}
+    <div class="tags">${tagHTML(x)}</div>
+    <div class="sec"><h4>导航</h4><div class="maprow">
+      <a class="main" href="${esc(googleHref(x))}" target="_blank" rel="noopener">Google 地图</a>
+      <a href="${esc(appleHref(x))}" target="_blank" rel="noopener">苹果地图</a></div>
+      <div class="hint">${hasLL(x) ? `已存坐标 ${x.lat.toFixed(5)}, ${x.lng.toFixed(5)}，两种地图都会精确定位。` : `Google 地图用表中原链接定位；苹果地图按名称在万象搜索，若找不到，可在“编辑”里补坐标。`}</div></div>
+    ${sec("电话", phones)}
+    ${sec(both ? "介绍（餐厅表）" : "特色", esc(x.food))}
+    ${sec("酒店设施", esc(x.facility))}
+    ${sec("协议价", esc(x.price), "price")}
+    ${sec("地址", esc(x.addr))}
+    ${sec("备注", esc(x.note))}
+    ${links.length > 1 ? sec("地图链接", `<div class="links">${links.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a>`).join("")}</div>`) : ""}
+    <div class="foot"><button class="btn" type="button" data-edit="${x.id}">编辑</button><button class="btn danger" type="button" data-del="${x.id}">删除</button></div>
+    <div id="delBox"></div>
+    <div class="src">来源：${esc((x.src || []).join("、") || "网页新增")}${x.updatedAt ? ` · 最后修改 ${esc(x.updatedAt.slice(0, 16).replace("T", " "))}` : ""}</div>`;
+  openSheet(`${esc(x.name)}${x.nameNote ? `<small>${esc(x.nameNote)}</small>` : ""}`, html);
+  watchImgs($("sheetBody"));
+}
+
+/* ---------- 新增 / 编辑 ---------- */
+let draftPhotos = [];   // {id?, file?, url}
+function showForm(id) {
+  const x = id ? DB.records.find(r => r.id === id) : { kind: ["餐厅"], tags: [], phones: [], maps: [], imgs: [] };
+  openId = id || null;
+  draftPhotos = (x.imgs || []).map(i => ({ id: i, url: null }));
+  const tags = [...new Set([...allTags(), ...(x.tags || []).filter(t => t !== "酒店")])];
+  const html = `<form class="form" id="recForm" novalidate>
+    <label>名称 <span class="req">*</span><input class="field" id="f_name" value="${esc(x.name)}" required></label>
+    <label>其他名称 / 中文名<input class="field" id="f_note" value="${esc(x.nameNote)}"></label>
+    <div><div class="hint" style="font-weight:600;margin-bottom:4px">类型</div><div class="kinds">
+      <label><input type="checkbox" id="k_r" ${x.kind.includes("餐厅") ? "checked" : ""}>餐厅</label>
+      <label><input type="checkbox" id="k_h" ${x.kind.includes("酒店") ? "checked" : ""}>酒店</label></div></div>
+    <div><div class="hint" style="font-weight:600;margin-bottom:4px">标签（点选）</div>
+      <div class="tagpick" id="tagpick">${tags.map(t => `<button type="button" class="chip" data-pick="${esc(t)}" aria-pressed="${(x.tags || []).includes(t)}">${esc(t)}</button>`).join("")}</div>
+      <div class="row2" style="margin-top:6px"><input class="field" id="f_newtag" placeholder="自定义标签，如：素食"><button class="btn" type="button" id="addTag" style="flex:0 0 auto">添加</button></div></div>
+    <label>餐饮介绍 / 特色<textarea class="field" id="f_food">${esc(x.food)}</textarea></label>
+    <label>酒店设施<textarea class="field" id="f_fac">${esc(x.facility)}</textarea></label>
+    <label>协议价（一行一种房型）<textarea class="field" id="f_price">${esc(x.price)}</textarea></label>
+    <label>电话（一行一个）<textarea class="field" id="f_phones" style="min-height:56px">${esc((x.phones || []).map(p => p.num).join("\n"))}</textarea></label>
+    <label>Google 地图链接（一行一个，第一个用于导航）<textarea class="field" id="f_maps" style="min-height:56px">${esc((x.maps || []).map(m => m.url).join("\n"))}</textarea></label>
+    <label>地址<input class="field" id="f_addr" value="${esc(x.addr)}"></label>
+    <div><label>坐标（纬度, 经度）<input class="field" id="f_ll" value="${hasLL(x) ? x.lat + ", " + x.lng : ""}" placeholder="例如 17.96620, 102.61210"></label>
+      <div class="row2" style="margin-top:6px"><button class="btn" type="button" id="geoBtn">用我现在的位置</button><button class="btn" type="button" id="llFromLink">从地图链接读取</button></div>
+      <div class="hint" style="margin-top:4px">有坐标后苹果地图也能精确定位。短链接（maps.app.goo.gl）读不出坐标：可在 Google 地图里长按该地点，复制顶部出现的坐标粘贴到这里。</div></div>
+    <div><div class="hint" style="font-weight:600;margin-bottom:4px">照片</div><div class="photos" id="photos"></div>
+      <input type="file" id="f_file" accept="image/*" multiple hidden></div>
+    <label>备注<textarea class="field" id="f_memo" style="min-height:56px">${esc(x.note)}</textarea></label>
+    <div class="err" id="formErr"></div>
+    <div class="foot"><button class="btn" type="button" id="cancelForm">取消</button><button class="btn primary" type="submit">保存</button></div>
+  </form>`;
+  openSheet(id ? "编辑：" + esc(x.name) : "新增酒店 / 餐厅", html);
+  renderPhotos();
+}
+function renderPhotos() {
+  const box = $("photos"); if (!box) return;
+  box.innerHTML = draftPhotos.map((p, i) => `<div class="ph"><img alt="" ${p.url ? `src="${p.url}"` : `data-img="${esc(p.id)}" data-thumb="1"`}><button type="button" data-rmph="${i}" aria-label="移除照片">×</button></div>`).join("") +
+    `<button type="button" class="addph" id="addPh">添加<br>照片</button>`;
+  watchImgs(box);
+}
+async function shrink(file, max, q) {
+  let bmp;
+  try { bmp = await createImageBitmap(file, { imageOrientation: "from-image" }); }
+  catch (e) { bmp = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = URL.createObjectURL(file); }); }
+  const w = bmp.width, h = bmp.height, s = Math.min(1, max / Math.max(w, h));
+  const c = document.createElement("canvas"); c.width = Math.round(w * s); c.height = Math.round(h * s);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  const blob = await new Promise(ok => c.toBlob(ok, "image/jpeg", q));
+  return new Uint8Array(await blob.arrayBuffer());
+}
+function readForm() {
+  const v = id => $(id).value.trim();
+  const name = v("f_name");
+  if (!name) throw new Error("请填写名称。");
+  const kinds = [...($("k_h").checked ? ["酒店"] : []), ...($("k_r").checked ? ["餐厅"] : [])];
+  if (!kinds.length) throw new Error("请至少选择“餐厅”或“酒店”之一。");
+  let lat = null, lng = null;
+  if (v("f_ll")) { const ll = parseLL(v("f_ll")); if (!ll) throw new Error("坐标格式不对，请写成“纬度, 经度”，如 17.96620, 102.61210。"); [lat, lng] = ll; }
+  const old = openId ? DB.records.find(r => r.id === openId) : null;
+  const oldSrc = new Map((old?.phones || []).map(p => [p.num, p.src]));
+  const tags = [...document.querySelectorAll("#tagpick [aria-pressed=true]")].map(b => b.dataset.pick);
+  const lines = id => v(id).split("\n").map(s => s.trim()).filter(Boolean);
+  const oldMap = new Map((old?.maps || []).map(m => [m.url, m.src]));
+  return {
+    name, nameNote: v("f_note") || null, kind: kinds,
+    tags: [...(kinds.includes("酒店") ? ["酒店"] : []), ...tags.filter(t => t !== "酒店")],
+    food: v("f_food") || null, facility: v("f_fac") || null, price: v("f_price") || null,
+    phones: lines("f_phones").map(n => ({ num: n, src: oldSrc.get(n) || "新增" })),
+    maps: lines("f_maps").map(u => ({ url: u, src: oldMap.get(u) || "新增" })),
+    addr: v("f_addr") || null, note: v("f_memo") || null, lat, lng,
+  };
+}
+
+/* 读最新数据 -> 修改 -> 加密 -> 写回；被别人抢先改动时重试一次 */
+async function commit(mutate, message) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const j = await gh("data.json");
+    const file = JSON.parse(new TextDecoder().decode(b64dec(j.content)));
+    if (file.s !== META.s) throw new Error("网站上的数据换了密码，请刷新页面后重新登录。");
+    const db = await decryptJSON(file);
+    const result = mutate(db);
+    db.updated = new Date().toISOString();
+    const enc = await encryptJSON(db);
+    try {
+      const r = await ghPut("data.json", b64enc(new TextEncoder().encode(JSON.stringify(enc))), message, j.sha);
+      FILE_SHA = r.content.sha; DB = db; return result;
+    } catch (e) { if ((e.status === 409 || e.status === 422) && attempt === 0) continue; throw e; }
+  }
+}
+async function saveForm(ev) {
+  ev.preventDefault();
+  $("formErr").textContent = "";
+  let rec;
+  try { rec = readForm(); } catch (e) { $("formErr").textContent = e.message; return; }
+  if (!token()) { $("formErr").innerHTML = `还没有设置 GitHub 令牌，无法保存到网站。<br><button class="btn primary" type="button" id="goSettings" style="margin-top:8px">去填写令牌</button><span class="hint" style="margin-left:8px">填好后会自动回到这个表单，内容不会丢。</span>`; stash = { id: openId, rec, photos: draftPhotos }; return; }
+  const editing = openId;
+  busy(true, "保存中…");
+  try {
+    const ids = [];
+    let n = 0;
+    for (const p of draftPhotos) {
+      if (p.id) { ids.push(p.id); continue; }
+      busy(true, `上传照片 ${++n}/${draftPhotos.filter(q => !q.id).length}…`);
+      const id = rid();
+      const big = await encryptBytes(await shrink(p.file, 1100, 0.78));
+      const small = await encryptBytes(await shrink(p.file, 320, 0.7));
+      await ghPut(`img/${id}.bin`, b64enc(big), `照片：${rec.name}`);
+      await ghPut(`img/${id}.t.bin`, b64enc(small), `照片缩略图：${rec.name}`);
+      p.id = id; ids.push(id);
+    }
+    rec.imgs = ids;
+    rec.updatedAt = new Date().toISOString();
+    busy(true, "保存数据…");
+    const newId = await commit(db => {
+      if (editing) {
+        const i = db.records.findIndex(r => r.id === editing);
+        if (i < 0) throw new Error("这条记录已被别人删除。");
+        db.records[i] = { ...db.records[i], ...rec };
+        return editing;
+      }
+      const max = db.records.reduce((m, r) => Math.max(m, parseInt(String(r.id).slice(1), 10) || 0), 0);
+      const id = "v" + String(max + 1).padStart(3, "0");
+      db.records.push({ id, src: [], ...rec });
+      return id;
+    }, (editing ? "修改：" : "新增：") + rec.name);
+    stash = null;
+    busy(false); buildChips(); render(); showDetail(newId);
+    toast("已保存。其他设备约 1 分钟后能看到。");
+  } catch (e) {
+    busy(false);
+    $("formErr") ? ($("formErr").textContent = e.status ? ghError(e) : e.message) : toast(e.status ? ghError(e) : e.message, 6000);
+  }
+}
+let stash = null;
+
+async function doDelete(id) {
+  const x = DB.records.find(r => r.id === id);
+  if (!token()) { toast("请先在“设置”里填写 GitHub 令牌，才能删除。", 5000); return; }
+  busy(true, "删除中…");
+  try {
+    await commit(db => { db.records = db.records.filter(r => r.id !== id); }, "删除：" + x.name);
+    busy(false); closeSheet(); buildChips(); render(); toast("已删除“" + x.name + "”。");
+  } catch (e) { busy(false); toast(e.status ? ghError(e) : e.message, 6000); }
+}
+
+/* ---------- 设置 ---------- */
+function showSettings() {
+  const t = token();
+  openSheet("设置", `
+    <div class="sec"><h4>GitHub 令牌（用于保存新增和修改）</h4>
+      <div class="hint">只有需要新增、编辑或删除的人才要填。令牌只存在这台设备的浏览器里。</div>
+      <div class="row2" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+        <input class="field" id="tokenIn" type="password" placeholder="${t ? "已设置（重新填写可替换）" : "github_pat_…"}" style="flex:1 1 220px">
+        <button class="btn primary" type="button" id="tokenSave">保存并测试</button></div>
+      ${t ? `<button class="btn" type="button" id="tokenDel" style="margin-top:8px">清除本机令牌</button>` : ""}
+      <div class="err" id="tokenMsg"></div>
+      <ol class="steps">
+        <li>电脑或手机浏览器打开 <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>（需登录 GitHub）。</li>
+        <li>Token name 随便填，如 <code>万象推荐表</code>；Expiration 选一个到期时间。</li>
+        <li>Repository access 选 <b>Only select repositories</b>，只勾 <code>nightsmeet.github.io</code>。</li>
+        <li>Permissions → Repository permissions → <b>Contents</b> 选 <b>Read and write</b>，其他不动。</li>
+        <li>点 Generate token，复制以 <code>github_pat_</code> 开头的令牌，粘贴到上面。</li>
+      </ol></div>
+    <div class="sec"><h4>导出</h4><button class="btn" type="button" id="exportCsv">导出为表格（CSV，可用 Excel 打开）</button></div>
+    <div class="sec"><h4>本机</h4><button class="btn" type="button" id="lockNow">锁定并忘记本机密码</button></div>
+    <div class="src">数据保存在 GitHub 仓库 ${GH.owner}/${GH.repo} 的 ${GH.dir} 文件夹，全部加密；每次保存都会留下一条提交记录，可在 GitHub 上查看历史。</div>`);
+}
+async function testToken(t) {
+  const r = await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}`, { headers: { Authorization: "Bearer " + t, Accept: "application/vnd.github+json" }, cache: "no-store" });
+  if (r.status === 401) throw new Error("令牌无效，请确认复制完整。");
+  if (!r.ok) throw new Error("这个令牌看不到 nightsmeet.github.io 仓库，请检查第 3 步。");
+  const j = await r.json();
+  if (!j.permissions || !j.permissions.push) throw new Error("令牌没有写入权限，请检查第 4 步（Contents 选 Read and write）。");
+}
+function exportCsv() {
+  const cols = [["名称", "name"], ["其他名称", "nameNote"], ["类型", x => x.kind.join("/")], ["标签", x => (x.tags || []).join("、")], ["餐饮介绍", "food"], ["酒店设施", "facility"], ["协议价", "price"],
+    ["电话", x => (x.phones || []).map(p => p.num).join("\n")], ["地图链接", x => (x.maps || []).map(m => m.url).join("\n")], ["地址", "addr"], ["纬度", "lat"], ["经度", "lng"], ["备注", "note"], ["来源", x => (x.src || []).join("、")]];
+  const cell = v => { const s = v == null ? "" : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const rows = [cols.map(c => c[0]), ...DB.records.map(x => cols.map(([, k]) => typeof k === "function" ? k(x) : x[k]))];
+  const blob = new Blob(["﻿" + rows.map(r => r.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `万象酒店餐厅推荐表-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------- 事件 ---------- */
+$("lockForm").addEventListener("submit", e => { e.preventDefault(); $("lockErr").textContent = ""; unlock($("pw").value, false); });
+$("q").addEventListener("input", render);
+document.querySelector(".seg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  kind = b.dataset.kind; document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b)); render();
+});
+$("chips").addEventListener("click", e => {
+  const b = e.target.closest("[data-tag]"); if (!b) return;
+  const t = b.dataset.tag; picked.has(t) ? picked.delete(t) : picked.add(t); b.setAttribute("aria-pressed", picked.has(t)); render();
+});
+$("tally").addEventListener("click", e => {
+  if (e.target.id !== "clearBtn") return;
+  picked.clear(); kind = ""; $("q").value = ""; buildChips();
+  document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x.dataset.kind === "")); render();
+});
+$("list").addEventListener("click", e => { const b = e.target.closest("[data-open]"); if (b) showDetail(b.dataset.open); });
+$("addBtn").addEventListener("click", () => showForm(null));
+$("moreBtn").addEventListener("click", showSettings);
+$("closeBtn").addEventListener("click", closeSheet);
+$("sheet").addEventListener("click", e => { if (e.target === $("sheet")) closeSheet(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("sheet").hidden) closeSheet(); });
+$("sheetBody").addEventListener("click", async e => {
+  const t = e.target;
+  if (t.dataset.copy) {
+    try { await navigator.clipboard.writeText(t.dataset.copy); toast("已复制 " + t.dataset.copy); } catch (_) { toast(t.dataset.copy); }
+  }
+  if (t.dataset.edit) showForm(t.dataset.edit);
+  if (t.dataset.del) {
+    const x = DB.records.find(r => r.id === t.dataset.del);
+    $("delBox").innerHTML = `<div class="confirm"><p>确定删除“${esc(x.name)}”？删除后所有人都看不到这条记录（GitHub 提交历史里仍可找回）。</p>
+      <div class="foot" style="margin-top:0"><button class="btn" type="button" id="delNo">不删了</button><button class="btn danger" type="button" data-delok="${x.id}">确定删除</button></div></div>`;
+    $("delBox").scrollIntoView({ block: "nearest" });
+  }
+  if (t.id === "delNo") $("delBox").innerHTML = "";
+  if (t.dataset.delok) doDelete(t.dataset.delok);
+  if (t.dataset.pick) t.setAttribute("aria-pressed", t.getAttribute("aria-pressed") !== "true");
+  if (t.id === "addTag") {
+    const v = $("f_newtag").value.trim(); if (!v) return;
+    let b = [...document.querySelectorAll("#tagpick [data-pick]")].find(x => x.dataset.pick === v);
+    if (!b) { $("tagpick").insertAdjacentHTML("beforeend", `<button type="button" class="chip" data-pick="${esc(v)}" aria-pressed="true">${esc(v)}</button>`); }
+    else b.setAttribute("aria-pressed", "true");
+    $("f_newtag").value = "";
+  }
+  if (t.id === "addPh") $("f_file").click();
+  if (t.dataset.rmph) { draftPhotos.splice(+t.dataset.rmph, 1); renderPhotos(); }
+  if (t.id === "geoBtn") {
+    if (!navigator.geolocation) { toast("这台设备不支持定位。"); return; }
+    t.disabled = true; t.textContent = "定位中…";
+    navigator.geolocation.getCurrentPosition(p => {
+      $("f_ll").value = p.coords.latitude.toFixed(6) + ", " + p.coords.longitude.toFixed(6);
+      t.disabled = false; t.textContent = "用我现在的位置"; toast("已填入当前位置（精度约 " + Math.round(p.coords.accuracy) + " 米）。");
+    }, err => { t.disabled = false; t.textContent = "用我现在的位置"; toast(err.code === 1 ? "没有定位权限，请在浏览器设置里允许本网站使用位置。" : "定位失败，请到室外再试。", 5000); },
+    { enableHighAccuracy: true, timeout: 15000 });
+  }
+  if (t.id === "llFromLink") {
+    const ll = parseLL($("f_maps").value) || parseLL($("f_addr").value);
+    if (ll) { $("f_ll").value = ll[0] + ", " + ll[1]; toast("已从链接读取坐标。"); }
+    else toast("链接里没有坐标（短链接读不出来）。可在 Google 地图里长按地点，复制坐标粘贴。", 6000);
+  }
+  if (t.id === "cancelForm") { const id = openId; id ? showDetail(id) : closeSheet(); }
+  if (t.id === "tokenSave") {
+    const v = $("tokenIn").value.trim(); const msg = $("tokenMsg");
+    if (!v) { msg.textContent = "请先粘贴令牌。"; return; }
+    t.disabled = true; msg.textContent = "测试中…"; msg.style.color = "";
+    try { await testToken(v); store.set(LS.token, v); msg.style.color = "var(--ok)"; msg.textContent = "令牌可用，已保存在本机。";
+      if (stash) { const s = stash; toast("令牌已保存，正在回到刚才的表单…"); setTimeout(() => { showForm(s.id); restoreStash(s); }, 600); }
+    } catch (err) { msg.textContent = err.message; }
+    t.disabled = false;
+  }
+  if (t.id === "goSettings") showSettings();
+  if (t.id === "tokenDel") { store.set(LS.token, null); showSettings(); toast("已清除本机令牌。"); }
+  if (t.id === "exportCsv") exportCsv();
+  if (t.id === "lockNow") { store.set(LS.pw, null); location.reload(); }
+});
+function restoreStash(s) {
+  const r = s.rec, set = (id, v) => { if ($(id)) $(id).value = v ?? ""; };
+  set("f_name", r.name); set("f_note", r.nameNote); set("f_food", r.food); set("f_fac", r.facility); set("f_price", r.price);
+  set("f_phones", r.phones.map(p => p.num).join("\n")); set("f_maps", r.maps.map(m => m.url).join("\n")); set("f_addr", r.addr); set("f_memo", r.note);
+  set("f_ll", r.lat != null ? r.lat + ", " + r.lng : "");
+  $("k_r").checked = r.kind.includes("餐厅"); $("k_h").checked = r.kind.includes("酒店");
+  const have = new Set([...document.querySelectorAll("#tagpick [data-pick]")].map(b => b.dataset.pick));
+  r.tags.filter(t => t !== "酒店" && !have.has(t)).forEach(t => $("tagpick").insertAdjacentHTML("beforeend", `<button type="button" class="chip" data-pick="${esc(t)}" aria-pressed="true">${esc(t)}</button>`));
+  document.querySelectorAll("#tagpick [data-pick]").forEach(b => b.setAttribute("aria-pressed", r.tags.includes(b.dataset.pick)));
+  draftPhotos = s.photos; renderPhotos();
+}
+$("sheetBody").addEventListener("submit", e => { if (e.target.id === "recForm") saveForm(e); });
+$("sheetBody").addEventListener("change", e => {
+  if (e.target.id !== "f_file") return;
+  for (const f of e.target.files) draftPhotos.push({ file: f, url: URL.createObjectURL(f) });
+  e.target.value = ""; renderPhotos();
+});
+
+/* 记住的密码自动解锁 */
+(function () { const pw = store.get(LS.pw); if (pw) { $("remember").checked = true; unlock(pw, true); } })();
+</script>
+</body>
+</html>
